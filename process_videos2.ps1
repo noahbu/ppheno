@@ -1,5 +1,5 @@
 # Set the common base path
-$basePath = "C:\Users\BBLab\Documents\nerf-preprocessing\data\2024-08-05"  # TODO: change here for specific folder
+$basePath = "C:\Users\BBLab\Documents\nerf-preprocessing\data\2024-08-07"  # TODO: change here for specific folder
 
 # Start capturing all output to a log file
 $logFile = "$basePath\output\$(Get-Date -Format 'yyyy-MM-dd_HH-mm-ss')-log.txt"
@@ -7,7 +7,7 @@ Start-Transcript -Path $logFile
 
 # Set the base paths for input and output directories
 $baseInputDir = "$basePath\indiv"
-$baseOutputDir = "$basePath\output"
+$baseOutputDir = "$basePath\output"   
 
 # Get all video files in the input directory
 $videoFiles = Get-ChildItem -Path $baseInputDir -File
