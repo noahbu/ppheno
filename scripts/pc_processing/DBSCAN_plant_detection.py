@@ -3,6 +3,7 @@
 # The script loads the camera poses from a JSON file, rotates them, and combines them with the point cloud data.
 # It then applies DBSCAN clustering to identify the cluster containing the majority of camera poses.
 # Finally, it filters out the points in that cluster and saves the filtered point cloud.
+# Use with conda environment: open3d
 ################################################################################################################
 
 
@@ -14,9 +15,9 @@ from collections import Counter
 import matplotlib.pyplot as plt
 
 # Paths to the files
-transforms_file = '/Users/noahbucher/Documents_local/Plant_reconstruction/melonCycle/2024-07-30/A-1/transforms.json'
-point_cloud_file = '/Users/noahbucher/Documents_local/Plant_reconstruction/melonCycle/2024-07-30/A-1/point_cloud.ply'
-output_filtered_point_cloud_file = '/Users/noahbucher/Documents_local/Plant_reconstruction/melonCycle/2024-07-30/A-1/filtered_point_cloud2.ply'
+transforms_file = '/Users/noahbucher/Documents_local/Plant_reconstruction/melonCycle/2024-07-30/B-4/transforms.json'
+point_cloud_file = '/Users/noahbucher/Documents_local/Plant_reconstruction/melonCycle/2024-07-30/B-4/point_cloud.ply'
+output_filtered_point_cloud_file = '/Users/noahbucher/Documents_local/Plant_reconstruction/melonCycle/2024-07-30/B-4/filtered_point_cloud2.ply'
 
 # Load the camera poses from the JSON file
 with open(transforms_file, 'r') as f:
