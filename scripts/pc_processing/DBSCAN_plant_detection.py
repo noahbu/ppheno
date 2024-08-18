@@ -12,14 +12,16 @@ import numpy as np
 from sklearn.cluster import DBSCAN
 from collections import Counter
 import matplotlib.pyplot as plt
-
 from pathlib import Path
 
 # Get the current script's directory
 script_dir = Path(__file__).parent.resolve()
 
+# Construct the path to the root of the GitHub project
+project_root = script_dir.parent.parent
+
 # Construct the path to the /data folder
-data_folder = script_dir / Path('data/melonCycle/2024-07-30/B-4')
+data_folder = project_root / Path('data/melonCycle/2024-07-30/B-4')
 
 # Paths to the files
 transforms_file = data_folder / 'transforms.json'
