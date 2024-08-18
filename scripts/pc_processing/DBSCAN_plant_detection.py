@@ -6,7 +6,6 @@
 # Use with conda environment: open3d
 ################################################################################################################
 
-
 import open3d as o3d
 import json
 import numpy as np
@@ -14,10 +13,18 @@ from sklearn.cluster import DBSCAN
 from collections import Counter
 import matplotlib.pyplot as plt
 
+from pathlib import Path
+
+# Get the current script's directory
+script_dir = Path(__file__).parent.resolve()
+
+# Construct the path to the /data folder
+data_folder = script_dir / Path('data/melonCycle/2024-07-30/B-4')
+
 # Paths to the files
-transforms_file = '/Users/noahbucher/Documents_local/Plant_reconstruction/melonCycle/2024-07-30/B-4/transforms.json'
-point_cloud_file = '/Users/noahbucher/Documents_local/Plant_reconstruction/melonCycle/2024-07-30/B-4/point_cloud.ply'
-output_filtered_point_cloud_file = '/Users/noahbucher/Documents_local/Plant_reconstruction/melonCycle/2024-07-30/B-4/filtered_point_cloud2.ply'
+transforms_file = data_folder / 'transforms.json'
+point_cloud_file = data_folder / 'point_cloud.ply'
+output_filtered_point_cloud_file = data_folder / 'filtered_point_cloud2.ply'
 
 # Load the camera poses from the JSON file
 with open(transforms_file, 'r') as f:
