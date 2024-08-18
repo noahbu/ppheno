@@ -15,7 +15,7 @@ project_root = script_dir.parent.parent
 data_folder = project_root / Path('data/melonCycle/2024-07-30/B-4')
 
 # Paths to the files
-point_cloud_file = data_folder / 'filtered_point_cloud2.ply'
+point_cloud_file = data_folder / 'plant_cluster_gmm_original.ply'
 
 # Load your cleaned point cloud
 pcd = o3d.io.read_point_cloud(str(point_cloud_file))
@@ -32,8 +32,8 @@ normalized_points = scaler.fit_transform(points)
 normalized_colors = scaler.fit_transform(colors)
 
 # Apply weights to the spatial and color features
-weight_spatial = 0.5  # Adjust this weight as needed
-weight_color = 2.0    # Adjust this weight as needed
+weight_spatial = 1.0  # Adjust this weight as needed
+weight_color = 0.0    # Adjust this weight as needed
 
 weighted_points = normalized_points * weight_spatial
 weighted_colors = normalized_colors * weight_color
@@ -42,7 +42,7 @@ weighted_colors = normalized_colors * weight_color
 weighted_features = np.hstack((weighted_points, weighted_colors))
 
 # Define the number of clusters
-n_clusters = 4  # Adjust the number of clusters as needed
+n_clusters = 2  # Adjust the number of clusters as needed
 
 # Apply KMeans clustering on the weighted features
 kmeans = KMeans(n_clusters=n_clusters, random_state=42).fit(weighted_features)
