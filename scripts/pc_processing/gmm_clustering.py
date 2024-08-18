@@ -58,6 +58,7 @@ new_colors[labels == 1] = cluster_colors[1]  # Apply blue to cluster 1
 
 pcd.colors = o3d.utility.Vector3dVector(new_colors)
 
+
 # Save the colored point cloud
 output_path = data_folder / 'gmm_colored_clusters_preserved.ply'
 o3d.io.write_point_cloud(str(output_path), pcd)
