@@ -18,8 +18,8 @@ from pathlib import Path
 # Load the point cloud
 script_dir = Path(__file__).parent.resolve()
 project_root = script_dir.parent.parent
-data_folder = project_root / Path('data/melonCycle/2024-07-30/B-4')
-point_cloud_file = data_folder / 'filtered_point_cloud2.ply'
+data_folder = project_root / Path('data/melonCycle/2024-07-30/A-1/point_cloud_edits')
+point_cloud_file = data_folder / 'filtered_point_cloud2_manual_ground_removal.ply'
 pcd = o3d.io.read_point_cloud(str(point_cloud_file))
 
 # Preprocessing: Downsample and remove outliers

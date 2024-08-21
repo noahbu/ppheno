@@ -18,10 +18,10 @@ script_dir = Path(__file__).parent.resolve()
 project_root = script_dir.parent.parent
 
 # Construct the path to the /data folder
-data_folder = project_root / Path('data/melonCycle/2024-07-30/B-4')
+data_folder = project_root / Path('data/melonCycle/2024-07-30/A-1')
 
 # Paths to the files
-point_cloud_file = data_folder / 'plant_cluster_gmm_original.ply'
+point_cloud_file = data_folder / 'filtered_point_cloud2.ply'
 
 # Load your cleaned point cloud
 pcd = o3d.io.read_point_cloud(str(point_cloud_file))
