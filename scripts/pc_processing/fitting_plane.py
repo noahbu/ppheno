@@ -5,7 +5,7 @@ from pathlib import Path
 # Load the point clouds for the ground and plant clusters
 script_dir = Path(__file__).parent.resolve()
 project_root = script_dir.parent.parent
-data_folder = project_root / Path('data/melonCycle/2024-07-30/B-4')
+data_folder = project_root / Path('data/melonCycle/2024-07-30/A-1/point_cloud_edits')
 pcd_g = data_folder / 'ground_cluster_gmm_blue.ply'
 pcd_p = data_folder / 'plant_cluster_gmm_original.ply'
 
