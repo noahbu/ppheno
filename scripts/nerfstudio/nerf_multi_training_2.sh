@@ -1,19 +1,19 @@
 #!/bin/bash
 
 # Base directory containing the training subdirectories
-base_dir="/home/ubuntu/data/custom/MuskMelon_C/2024-08-01"
+base_dir="/home/ubuntu/data/custom/MuskMelon_C/2024-08-02"
 
 # Get the current date and time for logging purposes
 current_datetime=$(date +%Y-%m-%d_%H-%M-%S)
 
 # Log file name for all training sessions
-log_file="${base_dir}/log_2024-08-01_${current_datetime}.log"
+log_file="${base_dir}/log_2024-08-02_${current_datetime}.log"
 
 echo "Starting all training sessions in base directory: $base_dir" | tee -a "$log_file"
 echo "Logging output to: $log_file" | tee -a "$log_file"
 
 # Output base directory
-output_base_dir="/home/ubuntu/outputs/MuskMelon_C/2024-08-01"
+output_base_dir="/home/ubuntu/outputs/MuskMelon_C/2024-08-02"
 
 # Loop through each subdirectory in the base directory
 for data_dir in "$base_dir"/*
@@ -38,13 +38,13 @@ do
             --output-dir "$output_dir/nerfacto" \
             --method-name nerfacto \
             --experiment-name "$dir_name" \
-            --project-name "MuskMelon_2024_c_08-01" \
+            --project-name "MuskMelon_2024_c_08-02" \
             --vis viewer+wandb \
             --data "$data_dir" \
-            --pipeline.datamanager.train-num-rays-per-batch 2048 \
+            --pipeline.datamanager.train-num-rays-per-batch 1024 \
             --pipeline.model.predict-normals True \
             --mixed-precision True \
-            --machine.num-devices 1 \
+            --machine.num-devices 2 \
             --max-num-iterations 25000 \
             --logging.steps-per-log 100 \
             --viewer.quit-on-train-completion True
@@ -61,7 +61,7 @@ do
             if tail -c +$((initial_log_size + 1)) "$log_file" | grep -q "🎉 Training Finished 🎉"; then
                 echo "Training successfully completed for directory: $data_dir at $(date +%Y-%m-%d_%H-%M-%S)" | tee -a "$log_file"
                 kill -SIGINT $train_pid  # Send SIGINT to terminate the process
-                sleep 60
+                sleep 50
                 break
             fi
             

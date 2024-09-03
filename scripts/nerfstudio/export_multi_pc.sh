@@ -3,8 +3,8 @@
 # first with: chmod +x export_pointclouds.sh
 
 # Base directory containing the training subdirectories
-base_dir="/home/ubuntu/outputs/MuskMelon_C/2024-07-30"
-export_base_dir="/home/ubuntu/exports/MuskMelon_C/2024-07-30"
+base_dir="/home/ubuntu/outputs/MuskMelon_C/2024-08-02"
+export_base_dir="/home/ubuntu/ppheno/data/MuskMelon_C/2024-08-02"
 
 # Log file for the export process
 log_file="${export_base_dir}/PointCloud_Export_Log_$(date +'%Y-%m-%d_%H-%M-%S').txt"
