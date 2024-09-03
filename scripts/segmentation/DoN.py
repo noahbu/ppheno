@@ -2,6 +2,7 @@ import open3d as o3d
 import numpy as np
 import matplotlib.pyplot as plt
 import sys
+import os
 
 def compute_normals(pcd, radius):
     pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamRadius(radius=radius))
@@ -21,14 +22,17 @@ def difference_of_normals(pcd, small_radius, large_radius):
     don_values = np.nan_to_num(don_values, nan=0.0, posinf=0.0, neginf=0.0)
     return don_values
 
-def plot_don_histogram(don_values):
+def plot_don_histogram(don_values, output_path):
     plt.figure(figsize=(10, 6))
     plt.hist(don_values, bins=50, color='blue', alpha=0.7)
     plt.title("Histogram of DoN Values")
     plt.xlabel("DoN Value")
     plt.ylabel("Frequency")
     plt.grid(True)
-    plt.show()
+    
+    # Save the plot as a file instead of displaying it
+    plt.savefig(output_path)
+    plt.close()
 
 def visualize_normals(pcd, radius):
     pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamRadius(radius=radius))
@@ -50,7 +54,8 @@ def compute_avg_distance(pcd, num_neighbors):
 def main():
     try:
         # Load the point cloud
-        pcd = o3d.io.read_point_cloud("/Users/noahbucher/Documents_local/Plant_reconstruction/ppheno/data/melonCycle/2024-08-01/A-1_2024-08-01/m_pc_A-1_2024-08-01_dense_03.ply")
+        point_cloud_path = "/home/ubuntu/ppheno/data/MuskMelon_C/2024-08-01/A-1_2024-08-01/pc_A-1_2024-08-01_dense_02.ply"
+        pcd = o3d.io.read_point_cloud(point_cloud_path)
         if pcd.is_empty():
             print("The point cloud is empty!")
             return
@@ -75,8 +80,13 @@ def main():
         # Compute DoN
         don_values = difference_of_normals(pcd, small_radius, large_radius)
         
-        # Plot histogram of DoN values
-        plot_don_histogram(don_values)
+        # Determine output file path for the histogram
+        output_dir = os.path.dirname(point_cloud_path)
+        output_path = os.path.join(output_dir, "don_histogram.png")
+        
+        # Plot histogram of DoN values and save it to a file
+        plot_don_histogram(don_values, output_path)
+        print(f"Histogram saved to {output_path}")
         
     except KeyboardInterrupt:
         print("\nScript aborted by user.")
