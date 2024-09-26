@@ -23,8 +23,8 @@ def rgb_to_hue(r, g, b):
 # Load the point cloud
 script_dir = Path(__file__).parent.resolve()
 project_root = script_dir.parent.parent
-data_folder = project_root / Path('data/melonCycle/2024-08-01/C-2_2024-08-01')
-point_cloud_file = data_folder / 'pc_C-2_2024-08-01_dense_02.ply'
+data_folder = project_root / Path('data/melonCycle/2024-08-04/C-2_2024-08-04')
+point_cloud_file = data_folder / 'pc_C-2_2024-08-04_dense_02.ply'
 pcd = o3d.io.read_point_cloud(str(point_cloud_file))
 
 # Preprocessing: Downsample and remove outliers
@@ -46,7 +46,7 @@ scaler_hue = StandardScaler()
 normalized_hue = scaler_hue.fit_transform(hue_values)
 
 # Apply weights to the spatial and hue features
-weight_spatial = 0.0  # Adjust based on your needs
+weight_spatial = 0.3  # Adjust based on your needs
 weight_hue = 1.0      # Adjust based on your needs
 
 weighted_points = normalized_points * weight_spatial
@@ -56,7 +56,7 @@ weighted_hue = normalized_hue * weight_hue
 weighted_features = np.hstack((weighted_points, weighted_hue))
 
 # Number of clusters
-n_clusters = 8  # Adjust the number of clusters as needed
+n_clusters = 5  # Adjust the number of clusters as needed
 
 # Apply Gaussian Mixture Model clustering
 gmm = GaussianMixture(n_components=n_clusters, random_state=42).fit(weighted_features)

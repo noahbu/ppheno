@@ -268,31 +268,34 @@ def visualize_DoN_as_color(pcd, DoN_magnitudes):
 
 if __name__ == '__main__':
     # Load point cloud
-    pcd = o3d.io.read_point_cloud("/Users/noahbucher/Documents_local/Plant_reconstruction/ppheno/data/melonCycle/2024-08-06/A-4_2024-08-06/edits/m_pc_A-4_2024-08-06_dense_03.pcd")
-    output_path = "/Users/noahbucher/Documents_local/Plant_reconstruction/ppheno/data/melonCycle/2024-08-06/A-4_2024-08-06/edits/DoN_normals.ply"
+    pcd = o3d.io.read_point_cloud("/Users/noahbucher/Documents_local/Plant_reconstruction/ppheno/data/melonCycle/2024-08-05/A-1_2024-08-05/m_pc_A-1_2024-08-05_dense_02.ply")
+    output_path = "/Users/noahbucher/Documents_local/Plant_reconstruction/ppheno/data/melonCycle/2024-08-05/A-1_2024-08-05/DON_pc_A-1_2024-08-05_dense_02.ply"
 
     # Print number of points in the point cloud
     print(f"Number of points in the point cloud: {len(pcd.points)}")
     
     # Define radii for small and large scale normals
-    radius_small = 0.05  # Adjust based on point cloud scale
-    radius_large = 0.25   # Adjust based on point cloud scale
+    # radius_small = 0.05  # Adjust based on point cloud scale
+    # radius_large = 0.25   # Adjust based on point cloud scale
+
+    radius_small = 0.5  # Adjust based on point cloud scale
+    radius_large = 2   # Adjust based on point cloud scale
 
     # Compute normals at small scale and get statistics
     normals_small, stats_small = compute_normals_and_stats(pcd, radius_small)
-    print("\nSmall-scale normals statistics:")
-    print(f"Mean: {stats_small['mean']}")
-    print(f"Min: {stats_small['min']}")
-    print(f"Max: {stats_small['max']}")
-    print(f"Standard deviation: {stats_small['std']}")
+    # print("\nSmall-scale normals statistics:")
+    # print(f"Mean: {stats_small['mean']}")
+    # print(f"Min: {stats_small['min']}")
+    # print(f"Max: {stats_small['max']}")
+    # print(f"Standard deviation: {stats_small['std']}")
 
     # Compute normals at large scale and get statistics
     normals_large, stats_large = compute_normals_and_stats(pcd, radius_large)
-    print("\nLarge-scale normals statistics:")
-    print(f"Mean: {stats_large['mean']}")
-    print(f"Min: {stats_large['min']}")
-    print(f"Max: {stats_large['max']}")
-    print(f"Standard deviation: {stats_large['std']}")
+    # print("\nLarge-scale normals statistics:")
+    # print(f"Mean: {stats_large['mean']}")
+    # print(f"Min: {stats_large['min']}")
+    # print(f"Max: {stats_large['max']}")
+    # print(f"Standard deviation: {stats_large['std']}")
 
     # Compute the Difference of Normals (DoN)
     DoN = compute_DoN(normals_small, normals_large)
@@ -304,8 +307,8 @@ if __name__ == '__main__':
     #plot_DoN_histogram(DoN)
 
     # Print normals for a few points (adjust indices based on point cloud size)
-    point_indices = [0, 100, 500, 1000, 5000]  # Change these indices as needed
-    print_normals_for_points(normals_small, normals_large, point_indices)
+    # point_indices = [0, 100, 500, 1000, 5000]  # Change these indices as needed
+    # print_normals_for_points(normals_small, normals_large, point_indices)
 
     DoN_magnitudes = compute_DoN_magnitudes_for_all_points(normals_small, normals_large)
     print(f"Computed DoN magnitudes for all points: {DoN_magnitudes}")
