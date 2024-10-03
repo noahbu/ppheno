@@ -132,6 +132,42 @@ def center_and_normalize_point_cloud(pcd):
 
     return normalized_pcd
 
+def transfer_normals_based_on_distance(original_pcd, downsampled_pcd):
+    """
+    Transfer normals from the original point cloud to the downsampled point cloud 
+    by finding the closest point based on Euclidean distance and assigning normals from the original point cloud.
+
+    Parameters:
+    original_pcd (open3d.geometry.PointCloud): The original point cloud with accurate normals.
+    downsampled_pcd (open3d.geometry.PointCloud): The downsampled point cloud without normals.
+
+    Returns:
+    downsampled_pcd (open3d.geometry.PointCloud): The downsampled point cloud with transferred normals.
+    """
+    # Ensure the original point cloud has normals
+    if not original_pcd.has_normals():
+        raise ValueError("Original point cloud does not contain normals.")
+    
+    # Compute distances from each downsampled point to the original point cloud
+    distances = downsampled_pcd.compute_point_cloud_distance(original_pcd)
+    
+    # Prepare array to store the transferred normals
+    downsampled_normals = np.zeros((len(downsampled_pcd.points), 3))
+    
+    # For each downsampled point, find the closest point in the original point cloud
+    for i, distance in enumerate(distances):
+        # Find the index of the closest point in the original point cloud
+        min_distance_index = np.argmin(distance)
+        
+        # Assign the normal from the closest point in the original point cloud
+        downsampled_normals[i] = original_pcd.normals[min_distance_index]
+    
+    # Set the normals for the downsampled point cloud
+    downsampled_pcd.normals = o3d.utility.Vector3dVector(downsampled_normals)
+    
+    return downsampled_pcd
+
+
 
 def main(original_file, downsampled_file, output_file, threshold):
     """
@@ -147,30 +183,50 @@ def main(original_file, downsampled_file, output_file, threshold):
     original_pcd = read_point_cloud_pcd(original_file)
     downsampled_pcd = read_point_cloud_pcd(downsampled_file)
 
+    if not downsampled_pcd.has_normals():
+        downsampled_pcd.normals = o3d.utility.Vector3dVector(np.zeros((len(downsampled_pcd.points), 3)))
+
+    if not downsampled_pcd.has_colors():
+        downsampled_pcd.colors = o3d.utility.Vector3dVector(np.zeros((len(downsampled_pcd.points), 3)))
+
+    print(type(original_pcd.points[0]), type(downsampled_pcd.points[0]))
+
+
     # Filter downsampled points that are too far from the original
     #filtered_pcd = filter_downsampled_points(original_pcd, downsampled_pcd, threshold)
     filtered_pcd, removed_points = filter_downsampled_points(original_pcd, downsampled_pcd, threshold)
 
-    # Save the filtered point cloud to .pcd
-    write_point_cloud_pcd(output_file, filtered_pcd)
-    print(f"Filtered point cloud saved to {output_file} with {len(filtered_pcd.points)} points.")
+    if len(filtered_pcd.points) == 0:
+        print("Filtered point cloud is empty.")
+        return
 
-    augmented_pcd = add_random_points(original_pcd, filtered_pcd, removed_points)
+    # Transfer normals from original to downsampled point cloud
+    downsampled_pcd_with_normals = transfer_normals_based_on_distance(original_pcd, filtered_pcd)
 
-    # Center and normalize the point cloud
-    normalized_pcd = center_and_normalize_point_cloud(augmented_pcd)
+    o3d.io.write_point_cloud(output_file_normals, downsampled_pcd_with_normals)
 
-    print(f"Centered, normalized and augmented point cloud saved to {output_file_normalized}, with {len(normalized_pcd.points)} points.")
-    # Save the normalized point cloud
-    o3d.io.write_point_cloud(output_file_normalized, normalized_pcd)
+
+    # # Save the filtered point cloud to .pcd
+    # write_point_cloud_pcd(output_file, filtered_pcd)
+    # print(f"Filtered point cloud saved to {output_file} with {len(filtered_pcd.points)} points.")
+
+    # augmented_pcd = add_random_points(original_pcd, filtered_pcd, removed_points)
+
+    # # Center and normalize the point cloud
+    # normalized_pcd = center_and_normalize_point_cloud(augmented_pcd)
+
+    # print(f"Centered, normalized and augmented point cloud saved to {output_file_normalized}, with {len(normalized_pcd.points)} points.")
+    # # Save the normalized point cloud
+    # o3d.io.write_point_cloud(output_file_normalized, normalized_pcd)
 
 if __name__ == '__main__':
     # TODO: Adapt the file paths here
-    original_file = "/Users/noahbucher/Documents_local/Plant_reconstruction/ppheno/data/melonCycle/2024-08-06/A-4_2024-08-06/edits/m_pc_A-4_2024-08-06_dense_03.pcd"
-    downsampled_file = "//Users/noahbucher/Documents_local/Plant_reconstruction/ppheno/data/melonCycle/2024-08-06/A-4_2024-08-06/edits/Downsampled/m_pc_A-4_2024-08-06_dense_03_8192.pcd"
-    output_file = "/Users/noahbucher/Documents_local/Plant_reconstruction/ppheno/data/melonCycle/2024-08-06/A-4_2024-08-06/edits/Downsampled/m_pc_A-4_2024-08-06_dense_03_8192_filtered.pcd"
-    output_file_normalized = "/Users/noahbucher/Documents_local/Plant_reconstruction/ppheno/data/melonCycle/2024-08-06/A-4_2024-08-06/edits/Downsampled/m_pc_A-4_2024-08-06_dense_03_8192_a_n.pcd"
-    threshold = 0.01  # Set distance threshold here
+    original_file = "/Users/noahbucher/Documents_local/Plant_reconstruction/ppheno/data/leaf_area/blue_leaf/pc_blueLeaf_03_s.ply"
+    downsampled_file = "/Users/noahbucher/Documents_local/Plant_reconstruction/ppheno/data/leaf_area/blue_leaf/som_output/pc_blueLeaf_03_s_2048.ply"
+    output_file = "/Users/noahbucher/Documents_local/Plant_reconstruction/ppheno/data/leaf_area/blue_leaf/som_output/pc_blueLeaf_03_s_2048_cleaned.ply"
+    output_file_normals = "/Users/noahbucher/Documents_local/Plant_reconstruction/ppheno/data/leaf_area/blue_leaf/som_output/pc_blueLeaf_03_s_2048_cleaned_normals.ply"
+    output_file_normalized = "/Users/noahbucher/Documents_local/Plant_reconstruction/ppheno/data/leaf_area/blue_leaf/som_output/pc_blueLeaf_03_s_2048_normalized.ply"
+    threshold = 0.005  # Set distance threshold here
 
     print(f"Starting process with threshold: {threshold}")
     main(original_file, downsampled_file, output_file, threshold)
