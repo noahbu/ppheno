@@ -16,6 +16,7 @@ from sklearn.preprocessing import StandardScaler
 from pathlib import Path
 from colorsys import rgb_to_hsv
 
+
 def rgb_to_hue(r, g, b):
     h, s, v = rgb_to_hsv(r, g, b)
     return h * 360  # Convert to degrees
@@ -23,8 +24,8 @@ def rgb_to_hue(r, g, b):
 # Load the point cloud
 script_dir = Path(__file__).parent.resolve()
 project_root = script_dir.parent.parent
-data_folder = project_root / Path('data/melonCycle/2024-08-04/C-2_2024-08-04')
-point_cloud_file = data_folder / 'pc_C-2_2024-08-04_dense_02.ply'
+data_folder = project_root / Path('data/melonCycle/2024-08-05/A-3_2024-08-05/')
+point_cloud_file = data_folder / 'pc_A-3_2024-08-05_dense_02.ply'
 pcd = o3d.io.read_point_cloud(str(point_cloud_file))
 
 # Preprocessing: Downsample and remove outliers

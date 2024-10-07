@@ -120,7 +120,6 @@ def print_normals_for_points(normals_small, normals_large, point_indices):
         print(f"Small-scale normal: {normals_small[idx]}")
         print(f"Large-scale normal: {normals_large[idx]}")
 
-import numpy as np
 
 def compute_DoN_with_orientation_check(normal_small, normal_large):
     """
@@ -265,11 +264,67 @@ def visualize_DoN_as_color(pcd, DoN_magnitudes):
 
     return pcd
 
+def compute_DoN_magnitudes_vectorized(normals_small, normals_large):
+    """
+    Compute the Difference of Normals (DoN) magnitudes for all points in the point cloud,
+    ensuring normal orientation consistency, using vectorized operations.
+    """
+    # Compute dot products between normals
+    dot_products = np.einsum('ij,ij->i', normals_small, normals_large)
+
+    # Create a mask where dot product is negative
+    mask = dot_products < 0
+
+    # Flip normals_large where needed
+    normals_large_flipped = normals_large.copy()
+    normals_large_flipped[mask] *= -1
+
+    # Compute DoN
+    DoN = normals_small - normals_large_flipped
+
+    # Compute DoN magnitudes
+    DoN_magnitudes = np.linalg.norm(DoN, axis=1)
+
+    return DoN_magnitudes
+
+def compute_DoN_feature_vector(pcd, radius_small, radius_large):
+    """
+    Compute the Difference of Normals (DoN) for a point cloud and return the DoN magnitudes.
+    
+    Args:
+        pcd (o3d.geometry.PointCloud): The input point cloud.
+        radius_small (float): The radius for small-scale normal estimation.
+        radius_large (float): The radius for large-scale normal estimation.
+    
+    Returns:
+        np.ndarray: The DoN magnitudes, which can be used as a feature vector for clustering or other analysis.
+    """
+    
+    # Function to compute normals
+    def compute_normals(pcd, radius):
+        pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamRadius(radius=radius))
+        return np.asarray(pcd.normals).copy()
+    
+    # Compute normals at small and large scales
+    normals_small = compute_normals(pcd, radius_small)
+    normals_large = compute_normals(pcd, radius_large)
+    
+    # Compute DoN (Difference of Normals)
+    DoN = normals_small - normals_large
+    
+    # Compute DoN magnitudes
+    DoN_magnitudes = np.linalg.norm(DoN, axis=1)
+    
+    return DoN_magnitudes
+
 
 if __name__ == '__main__':
     # Load point cloud
     pcd = o3d.io.read_point_cloud("/Users/noahbucher/Documents_local/Plant_reconstruction/ppheno/data/melonCycle/2024-08-05/A-1_2024-08-05/m_pc_A-1_2024-08-05_dense_02.ply")
     output_path = "/Users/noahbucher/Documents_local/Plant_reconstruction/ppheno/data/melonCycle/2024-08-05/A-1_2024-08-05/DON_pc_A-1_2024-08-05_dense_02.ply"
+
+    # Downsample the point cloud for greatly improved performance
+    pcd = pcd.voxel_down_sample(voxel_size=0.05)
 
     # Print number of points in the point cloud
     print(f"Number of points in the point cloud: {len(pcd.points)}")
@@ -278,40 +333,47 @@ if __name__ == '__main__':
     # radius_small = 0.05  # Adjust based on point cloud scale
     # radius_large = 0.25   # Adjust based on point cloud scale
 
-    radius_small = 0.5  # Adjust based on point cloud scale
+    radius_small = 0.4  # Adjust based on point cloud scale
     radius_large = 2   # Adjust based on point cloud scale
 
-    # Compute normals at small scale and get statistics
-    normals_small, stats_small = compute_normals_and_stats(pcd, radius_small)
-    # print("\nSmall-scale normals statistics:")
-    # print(f"Mean: {stats_small['mean']}")
-    # print(f"Min: {stats_small['min']}")
-    # print(f"Max: {stats_small['max']}")
-    # print(f"Standard deviation: {stats_small['std']}")
+    # # Compute normals at small scale and get statistics
+    # normals_small, stats_small = compute_normals_and_stats(pcd, radius_small)
+    # # print("\nSmall-scale normals statistics:")
+    # # print(f"Mean: {stats_small['mean']}")
+    # # print(f"Min: {stats_small['min']}")
+    # # print(f"Max: {stats_small['max']}")
+    # # print(f"Standard deviation: {stats_small['std']}")
 
-    # Compute normals at large scale and get statistics
-    normals_large, stats_large = compute_normals_and_stats(pcd, radius_large)
-    # print("\nLarge-scale normals statistics:")
-    # print(f"Mean: {stats_large['mean']}")
-    # print(f"Min: {stats_large['min']}")
-    # print(f"Max: {stats_large['max']}")
-    # print(f"Standard deviation: {stats_large['std']}")
+    # # Compute normals at large scale and get statistics
+    # normals_large, stats_large = compute_normals_and_stats(pcd, radius_large)
+    # # print("\nLarge-scale normals statistics:")
+    # # print(f"Mean: {stats_large['mean']}")
+    # # print(f"Min: {stats_large['min']}")
+    # # print(f"Max: {stats_large['max']}")
+    # # print(f"Standard deviation: {stats_large['std']}")
 
-    # Compute the Difference of Normals (DoN)
-    DoN = compute_DoN(normals_small, normals_large)
+    # # Compute the Difference of Normals (DoN)
+    # DoN = compute_DoN(normals_small, normals_large)
 
-    # Inspect the statistics of the DoN values
-    DoN_statistics = inspect_DoN_statistics(DoN)
+    # # Inspect the statistics of the DoN values
+    # DoN_statistics = inspect_DoN_statistics(DoN)
 
-    # Plot the histogram of DoN values
-    #plot_DoN_histogram(DoN)
+    # # Plot the histogram of DoN values
+    # #plot_DoN_histogram(DoN)
 
-    # Print normals for a few points (adjust indices based on point cloud size)
-    # point_indices = [0, 100, 500, 1000, 5000]  # Change these indices as needed
-    # print_normals_for_points(normals_small, normals_large, point_indices)
+    # # Print normals for a few points (adjust indices based on point cloud size)
+    # # point_indices = [0, 100, 500, 1000, 5000]  # Change these indices as needed
+    # # print_normals_for_points(normals_small, normals_large, point_indices)
 
-    DoN_magnitudes = compute_DoN_magnitudes_for_all_points(normals_small, normals_large)
-    print(f"Computed DoN magnitudes for all points: {DoN_magnitudes}")
+    # # DoN_magnitudes = compute_DoN_magnitudes_for_all_points(normals_small, normals_large)
+    # DoN_magnitudes = compute_DoN_magnitudes_vectorized(normals_small, normals_large)
+
+        # Compute the DoN magnitudes (feature vector)
+    DoN_magnitudes = compute_DoN_feature_vector(pcd, radius_small, radius_large)
+    
+    print("Computed DoN feature vector:", DoN_magnitudes)
+
+    # print(f"Computed DoN magnitudes for all points: {DoN_magnitudes}")
 
         # Attach DoN magnitudes as scalar values (greyscale colors) to the point cloud
     #pcd_with_DoN = attach_DoN_as_scalar_to_point_cloud(pcd, DoN_magnitudes)

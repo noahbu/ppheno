@@ -7,8 +7,8 @@ from pathlib import Path
 # Load your point cloud
 script_dir = Path(__file__).parent.resolve()
 project_root = script_dir.parent.parent
-data_folder = project_root / Path('data/melonCycle/2024-08-01/A-1_2024-08-01')
-point_cloud_file = data_folder / 'pc_A-1_2024-08-01_dense_02.ply'
+data_folder = project_root / Path('data/melonCycle/2024-08-01/A-4_2024-08-01/')
+point_cloud_file = data_folder / 'pc_A-4_2024-08-01_dense_02_plant_cluster.ply'
 pcd = o3d.io.read_point_cloud(str(point_cloud_file))
 
 # Extract RGB values (assuming the point cloud has colors)
