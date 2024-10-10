@@ -1,7 +1,7 @@
 import open3d as o3d
 import numpy as np
 import matplotlib.pyplot as plt
-from DoN_radii2 import compute_DoN_feature_vector
+from segmentation.DoN_radii2 import compute_DoN_feature_vector
 import sys
 import os
 import colorsys
@@ -73,6 +73,7 @@ def load_pointcloud_relative(relative_path):
     
     # Navigate up two directories to reach the root directory of the repository
     root_dir = os.path.abspath(os.path.join(current_dir, '..', '..'))
+    # root_dir = os.path.abspath(os.path.join(current_dir, '..'))
     
     # Join the root directory with the provided relative path
     point_cloud_path = os.path.join(root_dir, relative_path)
@@ -374,7 +375,7 @@ def identify_plant_cluster(pcd, labels, n_clusters):
 
     return plant_cluster
 
-def preprocess_point_cloud(pcd, voxel_size=0.03, nb_neighbors=20, std_ratio=2.0):
+def preprocess_point_cloud(pcd, voxel_size=0.003, nb_neighbors=20, std_ratio=2.0):
     """Preprocess point cloud by downsampling and removing statistical outliers."""
     pcd = pcd.voxel_down_sample(voxel_size=voxel_size)
     cl, ind = pcd.remove_statistical_outlier(nb_neighbors=nb_neighbors, std_ratio=std_ratio)
@@ -427,6 +428,9 @@ def save_plant_and_clusters(pcd, labels, plant_cluster, pcd_dir, pcd_filename):
 
     # Filter and save plant-only points
     plant_pcd = filter_cluster_points(pcd, labels, plant_cluster)
+        # remove statistical outliers from plant_pcd
+    cl, ind = plant_pcd.remove_statistical_outlier(nb_neighbors=20, std_ratio=2.0)
+    plant_pcd = plant_pcd.select_by_index(ind)
     save_pointcloud_relative(plant_pcd, pcd_dir, f"{pcd_filename[:-4]}_plant_cluster.ply")
 
 ############################################################################################################
@@ -446,9 +450,9 @@ def load_point_clouds(directory):
     
     return pc_dense_02, m_pc_dense_03
 
-def process_directory(directory):
+def process_directory(directory, results_file):
     """Process all point clouds in a directory."""
-    # Load the point clouds
+    # Find the pc_***_dense_02.ply and m_pc_***_dense_03.ply files
     pc_dense_02, m_pc_dense_03 = load_point_clouds(directory)
     
     if pc_dense_02 is None or m_pc_dense_03 is None:
@@ -457,57 +461,13 @@ def process_directory(directory):
     
     print(f"Processing {directory}...")
 
-    # Preprocessing (you can add any specific preprocessing steps)
-    pc_dense_02 = preprocess_point_cloud(pc_dense_02)
-
-    # Perform clustering
-    radius_small = 0.4
-    radius_large = 0.5
-    n_clusters = 5
-    weights = {
-        'spatial': 0.3,
-        'normals': 0.0,
-        'hue': 1.0,
-        'saturation': 0.0,
-        'intensity': 0.0,
-        'don': 0.0
-    }
-    
-    labels = perform_gmm_clustering(pc_dense_02, radius_small, radius_large, weights, n_clusters)
-    
-    # Filter plant points (or define any other condition for plant cluster)
-    plant_cluster = identify_plant_cluster(pc_dense_02, labels)
-    plant_pcd = filter_cluster_points(pc_dense_02, labels, plant_cluster)
-
-    # Save clustered point cloud
-    clustered_filename = os.path.join(directory, "clustered.ply")
-    o3d.io.write_point_cloud(clustered_filename, plant_pcd)
-    print(f"Saved clustered point cloud: {clustered_filename}")
-
-    # Compute voxelized IoU
-    iou = voxelized_iou(plant_pcd, m_pc_dense_03)
-    print(f"Voxelized IoU for {directory}: {iou}")
-    
-
-def main():
-    # The relative path to the point cloud file from the root of your repository
-    relative_pcd_path = "data/melonCycle/2024-08-01/A-5_2024-08-01/pc_A-5_2024-08-01_dense_02.ply"
-
-    # Split the path into directory and file name
-    pcd_dir = os.path.dirname(relative_pcd_path)  # Directory path
-    pcd_filename = os.path.basename(relative_pcd_path)  # File name
-    
-    # Load the point cloud
-    pcd = load_pointcloud_relative(relative_pcd_path)
-    print(f"Loaded point cloud with {len(pcd.points)} points.")
-
     # Preprocess the point cloud
-    pcd = preprocess_point_cloud(pcd)
-    print(f"Downsampled pointcloud to {len(pcd.points)} points.")
+    pc_dense_02 = preprocess_point_cloud(pc_dense_02)
+    print(f"Downsampled pointcloud to {len(pc_dense_02.points)} points.")
 
-    # Define parameters
-    radius_small = 0.4
-    radius_large = 0.5
+    # Define parameters for first clustering
+    radius_small = 0.1
+    radius_large = 0.2
 
     # First GMM clustering
     weights_first = {
@@ -518,13 +478,13 @@ def main():
         'intensity': 0.0,
         'don': 0.0
     }
-    labels_first = perform_gmm_clustering(pcd, radius_small, radius_large, weights_first, n_clusters = 5)
+    labels_first = perform_gmm_clustering(pc_dense_02, radius_small, radius_large, weights_first, n_clusters=5)
 
     # Identify plant cluster based on first clustering
-    plant_cluster = identify_plant_cluster(pcd, labels_first, n_clusters = 5)
+    plant_cluster = identify_plant_cluster(pc_dense_02, labels_first, n_clusters=5)
 
     # Filter plant points for second clustering
-    plant_pcd = filter_cluster_points(pcd, labels_first, plant_cluster)
+    plant_pcd = filter_cluster_points(pc_dense_02, labels_first, plant_cluster)
 
     # Second GMM clustering (on plant cluster)
     weights_second = {
@@ -541,13 +501,115 @@ def main():
     plant_cluster_second = identify_plant_cluster(plant_pcd, labels_second, n_clusters=2)
 
     # Save the clustered and plant-only point clouds
-    save_plant_and_clusters(plant_pcd, labels_second, plant_cluster_second, pcd_dir, pcd_filename)
+    pcd_filename = os.path.basename(directory)  # Use the folder name for saving files
+    save_plant_and_clusters(plant_pcd, labels_second, plant_cluster_second, directory, f"{pcd_filename}_dense_02.ply")
 
     print(f"Final clustering and plant cloud saved for {pcd_filename}")
 
+    # Compute voxelized IoU with the ground truth (m_pc_dense_03)
+    iou = compute_voxel_iou(m_pc_dense_03, plant_pcd)
+    print(f"Voxelized IoU for {pcd_filename}: {iou}")
+
+    # Write the IoU result to the results file
+    with open(results_file, 'a') as f:
+        f.write(f"{pcd_filename}: {iou}\n")
+
+######################################  
+# define a function to return the plant point cloud and the ground point cloud
+import open3d as o3d
+import numpy as np
+
+def segment_plant_and_ground(pcd):
+    """
+    Segment the point cloud into plant and ground.
+    Returns the point cloud for the plant after the second clustering and the ground points.
+    
+    Args:
+        pcd (o3d.geometry.PointCloud): The input point cloud.
+        directory (str): Directory to save the results.
+    
+    Returns:
+        o3d.geometry.PointCloud: The plant point cloud and the ground point cloud.
+    """
+    # Preprocess the point cloud
+    pc_dense_02 = preprocess_point_cloud(pcd)
+    print(f"Downsampled point cloud to {len(pc_dense_02.points)} points.")
+
+    # Define parameters for first clustering
+    radius_small = 0.01
+    radius_large = 0.02
+
+    # First GMM clustering
+    weights_first = {
+        'spatial': 0.3,
+        'normals': 0.0,
+        'hue': 1.0,
+        'saturation': 1.0,
+        'intensity': 1.0,
+        'don': 0.0
+    }
+    labels_first = perform_gmm_clustering(pc_dense_02, radius_small, radius_large, weights_first, n_clusters=2)
+
+    # Identify plant cluster based on first clustering
+    plant_cluster = identify_plant_cluster(pc_dense_02, labels_first, n_clusters=2)
+
+    # Filter plant points for second clustering
+    plant_pcd = filter_cluster_points(pc_dense_02, labels_first, plant_cluster)
+
+    # o3d.visualization.draw_geometries([plant_pcd])
+
+    # Second GMM clustering (on plant cluster)
+    weights_second = {
+        'spatial': 0.0,
+        'normals': 0.0,
+        'hue': 1.0,
+        'saturation': 1.0,
+        'intensity': 1.0,
+        'don': 0.0
+    }
+    labels_second = perform_gmm_clustering(plant_pcd, radius_small, radius_large, weights_second, n_clusters=2)
+
+    # Identify plant cluster from the second clustering
+    plant_cluster_second = identify_plant_cluster(plant_pcd, labels_second, n_clusters=2)
+
+    # Filter plant points from second clustering
+    plant_only_pcd = filter_cluster_points(plant_pcd, labels_second, plant_cluster_second)
+
+    # Ground points: remove plant points from the original downsampled point cloud
+    plant_indices = np.where(labels_first == plant_cluster)[0]
+    non_plant_indices = np.setdiff1d(np.arange(len(pc_dense_02.points)), plant_indices)
+    ground_pcd = pc_dense_02.select_by_index(non_plant_indices)
+
+    # Save the clustered and plant-only point clouds
+    # pcd_filename = os.path.basename(directory)  # Use the folder name for saving files
+    # save_plant_and_clusters(plant_only_pcd, labels_second, plant_cluster_second, directory, f"{pcd_filename}_dense_02.ply")
+
+    return plant_only_pcd, ground_pcd
+
+
+def main():
+    # root_dir = "/Users/noahbucher/Documents_local/Plant_reconstruction/ppheno/data/melonCycle/2024-08-01"  # Set the root directory containing the folders
+    # results_file = "voxelized_iou_results.txt"  # Output file to store IoU results
+
+    # # Clear the file before starting
+    # open(results_file, 'w').close()
+
+    # for subdir, _, _ in os.walk(root_dir):
+    #     process_directory(subdir, results_file)
+
+    # load a pointcloud
+    pcd = load_pointcloud_relative("data/figures/pointcloud_time_series/C-3/s_pc_C-3_2024-08-04_dense_02.ply")
+
+    # Segment the point cloud into plant and ground
+    plant_only, ground = segment_plant_and_ground(pcd)
+
+    # Visualize the segmented point cloud
+    o3d.visualization.draw_geometries([plant_only])
+    o3d.visualization.draw_geometries([ground])
+
+
 if __name__ == "__main__":
     main()
-
 
 
 
