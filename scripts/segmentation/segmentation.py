@@ -281,7 +281,9 @@ def estimate_voxel_size_sklearn(pcd, sample_ratio=0.01, num_neighbors=20):
     return np.mean(avg_distances)
 
 def compute_voxel_iou(pcd_1, pcd_2):
+    preprocess_point_cloud(pcd_1)
     voxel_size = estimate_voxel_size_sklearn(pcd_2)
+
 
     voxel_grid_1 = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd_1, voxel_size=voxel_size)
     voxel_grid_2 = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd_2, voxel_size=voxel_size)
@@ -342,7 +344,7 @@ def objective_function(pcd, ground_truth_pcd, radius_small, radius_large, weight
     return iou_score
 
 
-def identify_plant_cluster(pcd, labels):
+def identify_plant_cluster(pcd, labels, n_clusters):
     """
     Identify the plant cluster based on the hue values of the point cloud.
     
@@ -372,8 +374,122 @@ def identify_plant_cluster(pcd, labels):
 
     return plant_cluster
 
+def preprocess_point_cloud(pcd, voxel_size=0.03, nb_neighbors=20, std_ratio=2.0):
+    """Preprocess point cloud by downsampling and removing statistical outliers."""
+    pcd = pcd.voxel_down_sample(voxel_size=voxel_size)
+    cl, ind = pcd.remove_statistical_outlier(nb_neighbors=nb_neighbors, std_ratio=std_ratio)
+    return pcd.select_by_index(ind)
 
-if __name__ == "__main__":
+def perform_gmm_clustering(pcd, radius_small, radius_large, weights, n_clusters):
+    """Perform GMM clustering on the point cloud."""
+    weighted_features = extract_and_weight_features(pcd, radius_small, radius_large, weights)
+    gmm = GaussianMixture(n_components=n_clusters, random_state=42).fit(weighted_features)
+    labels = gmm.predict(weighted_features)
+    return labels
+
+def filter_cluster_points(pcd, labels, target_cluster):
+    """Filter points and normals that belong to a specific cluster."""
+    cluster_indices = np.where(labels == target_cluster)[0]
+    cluster_points = np.asarray(pcd.points)[cluster_indices]
+    cluster_colors = np.asarray(pcd.colors)[cluster_indices]
+    
+    # Also filter normals
+    if pcd.has_normals():
+        cluster_normals = np.asarray(pcd.normals)[cluster_indices]
+    else:
+        cluster_normals = None
+
+    # Create a new point cloud for the cluster with normals
+    cluster_pcd = o3d.geometry.PointCloud()
+    cluster_pcd.points = o3d.utility.Vector3dVector(cluster_points)
+    cluster_pcd.colors = o3d.utility.Vector3dVector(cluster_colors)
+    
+    if cluster_normals is not None:
+        cluster_pcd.normals = o3d.utility.Vector3dVector(cluster_normals)
+
+    return cluster_pcd
+
+def save_plant_and_clusters(pcd, labels, plant_cluster, pcd_dir, pcd_filename):
+    """Assign colors to clusters, save the final clustered and plant-only point clouds."""
+    ground_clusters = [i for i in range(np.max(labels) + 1) if i != plant_cluster]
+    
+    # Define colors for clusters
+    cluster_colors = {}
+    cluster_colors[plant_cluster] = [pcd.colors[i] for i in np.where(labels == plant_cluster)[0]]
+    for ground_cluster in ground_clusters:
+        cluster_colors[ground_cluster] = [0.0, 0.5, 1.0]  # Blue color for ground clusters
+
+    # Assign colors to plant cluster after second clustering
+    pcd_colored = assign_colors_to_clusters(pcd, labels, cluster_colors)
+
+    # Save the clustered point cloud
+    save_pointcloud_relative(pcd_colored, pcd_dir, f"{pcd_filename[:-4]}_clustered.ply")
+
+    # Filter and save plant-only points
+    plant_pcd = filter_cluster_points(pcd, labels, plant_cluster)
+    save_pointcloud_relative(plant_pcd, pcd_dir, f"{pcd_filename[:-4]}_plant_cluster.ply")
+
+############################################################################################################
+# processing a whole directory of point clouds
+def load_point_clouds(directory):
+    """Load the pc_***_dense_02.ply and m_pc_***_dense_03.ply files in a directory."""
+    pc_dense_02 = None
+    m_pc_dense_03 = None
+    for filename in os.listdir(directory):
+        if "pc_" in filename and "_dense_02.ply" in filename:
+            pc_dense_02 = o3d.io.read_point_cloud(os.path.join(directory, filename))
+        elif "m_pc_" in filename and "_dense_03.ply" in filename:
+            m_pc_dense_03 = o3d.io.read_point_cloud(os.path.join(directory, filename))
+    
+    if pc_dense_02 is None or m_pc_dense_03 is None:
+        return None, None
+    
+    return pc_dense_02, m_pc_dense_03
+
+def process_directory(directory):
+    """Process all point clouds in a directory."""
+    # Load the point clouds
+    pc_dense_02, m_pc_dense_03 = load_point_clouds(directory)
+    
+    if pc_dense_02 is None or m_pc_dense_03 is None:
+        print(f"Skipping directory {directory}: Required files not found.")
+        return
+    
+    print(f"Processing {directory}...")
+
+    # Preprocessing (you can add any specific preprocessing steps)
+    pc_dense_02 = preprocess_point_cloud(pc_dense_02)
+
+    # Perform clustering
+    radius_small = 0.4
+    radius_large = 0.5
+    n_clusters = 5
+    weights = {
+        'spatial': 0.3,
+        'normals': 0.0,
+        'hue': 1.0,
+        'saturation': 0.0,
+        'intensity': 0.0,
+        'don': 0.0
+    }
+    
+    labels = perform_gmm_clustering(pc_dense_02, radius_small, radius_large, weights, n_clusters)
+    
+    # Filter plant points (or define any other condition for plant cluster)
+    plant_cluster = identify_plant_cluster(pc_dense_02, labels)
+    plant_pcd = filter_cluster_points(pc_dense_02, labels, plant_cluster)
+
+    # Save clustered point cloud
+    clustered_filename = os.path.join(directory, "clustered.ply")
+    o3d.io.write_point_cloud(clustered_filename, plant_pcd)
+    print(f"Saved clustered point cloud: {clustered_filename}")
+
+    # Compute voxelized IoU
+    iou = voxelized_iou(plant_pcd, m_pc_dense_03)
+    print(f"Voxelized IoU for {directory}: {iou}")
+    
+
+def main():
     # The relative path to the point cloud file from the root of your repository
     relative_pcd_path = "data/melonCycle/2024-08-01/A-5_2024-08-01/pc_A-5_2024-08-01_dense_02.ply"
 
@@ -385,18 +501,15 @@ if __name__ == "__main__":
     pcd = load_pointcloud_relative(relative_pcd_path)
     print(f"Loaded point cloud with {len(pcd.points)} points.")
 
-    # Preprocessing: Downsample and remove statistical outliers
-    pcd = pcd.voxel_down_sample(voxel_size=0.03)
-    cl, ind = pcd.remove_statistical_outlier(nb_neighbors=20, std_ratio=2.0)
-    pcd = pcd.select_by_index(ind)
+    # Preprocess the point cloud
+    pcd = preprocess_point_cloud(pcd)
     print(f"Downsampled pointcloud to {len(pcd.points)} points.")
 
     # Define parameters
     radius_small = 0.4
     radius_large = 0.5
-    n_clusters = 5  # Adjust as needed
 
-    # First GMM clustering (initial clustering on full point cloud)
+    # First GMM clustering
     weights_first = {
         'spatial': 0.3,
         'normals': 0.0,
@@ -405,33 +518,15 @@ if __name__ == "__main__":
         'intensity': 0.0,
         'don': 0.0
     }
+    labels_first = perform_gmm_clustering(pcd, radius_small, radius_large, weights_first, n_clusters = 5)
 
-    # Extract and weight features for the first clustering
-    weighted_features_first = extract_and_weight_features(pcd, radius_small, radius_large, weights_first)
-    
-    # Perform GMM clustering
-    gmm_first = GaussianMixture(n_components=n_clusters, random_state=42).fit(weighted_features_first)
-    labels_first = gmm_first.predict(weighted_features_first)
+    # Identify plant cluster based on first clustering
+    plant_cluster = identify_plant_cluster(pcd, labels_first, n_clusters = 5)
 
-    # Identify plant cluster based on the first clustering
-    plant_cluster = identify_plant_cluster(pcd, labels_first)
-
-    # Filter plant cluster points for the second clustering
-    plant_indices = np.where(labels_first == plant_cluster)[0]
-    plant_points = np.asarray(pcd.points)[plant_indices]
-    plant_colors = np.asarray(pcd.colors)[plant_indices]
-
-    # Create a new point cloud for the plant cluster
-    plant_pcd = o3d.geometry.PointCloud()
-    plant_pcd.points = o3d.utility.Vector3dVector(plant_points)
-    plant_pcd.colors = o3d.utility.Vector3dVector(plant_colors)
+    # Filter plant points for second clustering
+    plant_pcd = filter_cluster_points(pcd, labels_first, plant_cluster)
 
     # Second GMM clustering (on plant cluster)
-        # Define parameters
-    radius_small = 0.4
-    radius_large = 0.5
-    n_clusters = 2  # Adjust as needed
-
     weights_second = {
         'spatial': 0.0,
         'normals': 0.0,
@@ -440,46 +535,18 @@ if __name__ == "__main__":
         'intensity': 1.0,
         'don': 0.0
     }
+    labels_second = perform_gmm_clustering(plant_pcd, radius_small, radius_large, weights_second, n_clusters=2)
 
-    # Extract and weight features for the second clustering on the plant cluster
-    weighted_features_second = extract_and_weight_features(plant_pcd, radius_small, radius_large, weights_second)
+    # Identify plant cluster from the second clustering
+    plant_cluster_second = identify_plant_cluster(plant_pcd, labels_second, n_clusters=2)
 
-    # Perform GMM on plant cluster
-    gmm_second = GaussianMixture(n_components=n_clusters, random_state=42).fit(weighted_features_second)
-    labels_second = gmm_second.predict(weighted_features_second)
+    # Save the clustered and plant-only point clouds
+    save_plant_and_clusters(plant_pcd, labels_second, plant_cluster_second, pcd_dir, pcd_filename)
 
-    # Now reassign colors for second clustering
-    plant_cluster_second = identify_plant_cluster(plant_pcd, labels_second)
-    ground_clusters_second = [i for i in range(n_clusters) if i != plant_cluster_second]
+    print(f"Final clustering and plant cloud saved for {pcd_filename}")
 
-    # Define colors for second clusters
-    cluster_colors = {}
-    cluster_colors[plant_cluster_second] = [plant_pcd.colors[i] for i in np.where(labels_second == plant_cluster_second)[0]]
-    for ground_cluster in ground_clusters_second:
-        cluster_colors[ground_cluster] = [0.0, 0.5, 1.0]  # Blue color for ground clusters
-
-    # Assign colors to plant cluster after second clustering
-    pcd_colored_second = assign_colors_to_clusters(plant_pcd, labels_second, cluster_colors)
-
-    # Save the point cloud with final clustering results
-    save_pointcloud_relative(pcd_colored_second, pcd_dir, f"{pcd_filename[:-4]}_clustered.ply")
-
-    ### Save plant cluster after second clustering (without ground points) ###
-
-    # Filter only the plant points from the second clustering
-    plant_indices_second = np.where(labels_second == plant_cluster_second)[0]
-    plant_only_points = np.asarray(plant_pcd.points)[plant_indices_second]
-    plant_only_colors = np.asarray(plant_pcd.colors)[plant_indices_second]
-
-    # Create a new point cloud for the plant cluster without ground
-    plant_only_pcd = o3d.geometry.PointCloud()
-    plant_only_pcd.points = o3d.utility.Vector3dVector(plant_only_points)
-    plant_only_pcd.colors = o3d.utility.Vector3dVector(plant_only_colors)
-
-    # Save the plant-only point cloud
-    save_pointcloud_relative(plant_only_pcd, pcd_dir, f"{pcd_filename[:-4]}_plant_cluster.ply")
-
-    print(f"Computed feature vector with {weighted_features_second.shape[0]} points and {weighted_features_second.shape[1]} features.")
+if __name__ == "__main__":
+    main()
 
 
 
