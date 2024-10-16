@@ -25,18 +25,14 @@ def visualize_xz_projections_grid(folder_path, output_file=None):
     fig = plt.figure(figsize=(12, 12), constrained_layout=True)
     gs = GridSpec(3, 3, figure=fig, height_ratios=[0.2, 0.4, 0.6])
     
+    # Initialize lists to store data and all X values
+    data_list = []
     all_x_vals = []
 
+    # Process point clouds and store data
     for idx, file_name in enumerate(point_cloud_files[:9]):
         file_path = os.path.join(folder_path, file_name)
         pcd = o3d.io.read_point_cloud(file_path)
-
-        # Remove statistical outliers
-        # cl, ind = pcd.remove_statistical_outlier(nb_neighbors=10, std_ratio=2.0)
-        # pcd = pcd.select_by_index(ind)
-
-        # # Downsample the point cloud
-        # pcd = pcd.voxel_down_sample(voxel_size=0.003)
 
         # Project to XZ plane
         projected_points, projected_colors = project_to_xz_plane(pcd)
@@ -44,6 +40,17 @@ def visualize_xz_projections_grid(folder_path, output_file=None):
         # Collect all X values for consistent scaling
         all_x_vals.extend(projected_points[:, 0])
 
+        # Store the data for later use
+        data_list.append((projected_points, projected_colors))
+
+    # Set consistent X limits for all subplots
+    x_lim = (min(all_x_vals), max(all_x_vals))
+
+    # Apply consistent Z-axis limits based on row
+    z_limits = [0.2, 0.4, 0.6]
+
+    # Plot the combined grid
+    for idx, (projected_points, projected_colors) in enumerate(data_list):
         # Set up subplot in a 3x3 grid
         ax = fig.add_subplot(gs[idx // 3, idx % 3])
         ax.scatter(projected_points[:, 0], projected_points[:, 1], s=0.3, c=projected_colors, alpha=0.5)
@@ -51,14 +58,10 @@ def visualize_xz_projections_grid(folder_path, output_file=None):
         ax.set_xlabel('X (meter)')
         ax.set_ylabel('Z (meter)')
 
-        # Format the Z-axis ticks to one decimal place
+        # Format the Z-axis ticks to two decimal places
         ax.yaxis.set_major_formatter(FuncFormatter(format_z_ticks))
 
-    # Set consistent X limits for all subplots
-    x_lim = (min(all_x_vals), max(all_x_vals))
-
-    # Apply consistent Z-axis limits based on row
-    z_limits = [0.2, 0.4, 0.6]
+    # Adjust axes for the combined grid plot
     for row in range(3):
         for col in range(3):
             ax = fig.axes[row * 3 + col]
@@ -77,11 +80,36 @@ def visualize_xz_projections_grid(folder_path, output_file=None):
             if row != 2:
                 ax.set_xlabel('')  # Remove X-axis label for rows 1 and 2
 
-    # Optionally save the figure
+    # Optionally save the combined grid figure
     if output_file:
         plt.savefig(output_file, dpi=300)
 
     plt.show()
+
+    # Now, create and save individual plots
+    for idx, (projected_points, projected_colors) in enumerate(data_list):
+        fig_individual, ax_individual = plt.subplots(figsize=(6, 6))
+        ax_individual.scatter(projected_points[:, 0], projected_points[:, 1], s=0.3,
+                              c=projected_colors, alpha=0.5)
+        ax_individual.set_title(f"Day {idx + 1}")
+        ax_individual.set_xlabel('X (meter)')
+        ax_individual.set_ylabel('Z (meter)')
+
+        # Set consistent X and Z limits
+        ax_individual.set_xlim(x_lim)
+        z_lim = z_limits[idx // 3]
+        ax_individual.set_ylim(0, z_lim)
+        ax_individual.set_aspect('equal')
+
+        # Set Y-axis ticks at every 0.05 meters (5 centimeters)
+        ticks = np.arange(0, z_lim + 0.001, 0.05)
+        ax_individual.set_yticks(ticks)
+        ax_individual.yaxis.set_major_formatter(FuncFormatter(format_z_ticks))
+
+        # Save the individual plot
+        individual_output_file = f"Day_{idx + 1}.png"
+        plt.savefig(individual_output_file, dpi=300)
+        plt.close(fig_individual)
 
 if __name__ == "__main__":
     folder_path = "/Users/noahbucher/Documents_local/Plant_reconstruction/ppheno/data/figures/pointcloud_time_series/C-3/rotated"

@@ -303,38 +303,92 @@ def compute_DoN_feature_vector(pcd, radius_small, radius_large):
     # Function to compute normals
     def compute_normals(pcd, radius):
         pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamRadius(radius=radius))
-        return np.asarray(pcd.normals).copy()
+        normals = np.asarray(pcd.normals).copy()
+        norm = np.linalg.norm(normals, axis=1, keepdims=True)
+        return normals / norm
     
     # Compute normals at small and large scales
     normals_small = compute_normals(pcd, radius_small)
     normals_large = compute_normals(pcd, radius_large)
-    
+
+
+
+    # Ensure normals point in the same direction
+    dot_products = np.sum(normals_small * normals_large, axis=1)
+    reverse_indices = dot_products < 0
+    normals_large[reverse_indices] *= -1  # Reverse normals where dot product is negative
+
     # Compute DoN (Difference of Normals)
-    DoN = normals_small - normals_large
+    DoN = (normals_small - normals_large) / 2
     
     # Compute DoN magnitudes
     DoN_magnitudes = np.linalg.norm(DoN, axis=1)
-    
-    return DoN_magnitudes
 
+       # Normalize DoN magnitudes to [0, 1]
+    max_DoN_value = np.sqrt(2) / 2  # Maximum possible DoN magnitude
+    DoN_magnitudes_normalized = DoN_magnitudes / max_DoN_value
+    
+    return DoN_magnitudes_normalized
+
+
+
+
+def filter_z_axis(point_cloud, z_threshold=0.03):
+    # Convert the point cloud to a numpy array
+    points = np.asarray(point_cloud.points)
+
+    # Filter points where the z-value is greater than or equal to the threshold
+    filtered_points = points[points[:, 2] >= z_threshold]
+
+    # Create a new point cloud with the filtered points
+    filtered_pcd = o3d.geometry.PointCloud()
+    filtered_pcd.points = o3d.utility.Vector3dVector(filtered_points)
+
+    # Copy over any additional data, such as colors or normals if they exist
+    if point_cloud.has_colors():
+        filtered_colors = np.asarray(point_cloud.colors)[points[:, 2] >= z_threshold]
+        filtered_pcd.colors = o3d.utility.Vector3dVector(filtered_colors)
+    
+    if point_cloud.has_normals():
+        filtered_normals = np.asarray(point_cloud.normals)[points[:, 2] >= z_threshold]
+        filtered_pcd.normals = o3d.utility.Vector3dVector(filtered_normals)
+    
+    return filtered_pcd
 
 if __name__ == '__main__':
     # Load point cloud
-    pcd = o3d.io.read_point_cloud("/Users/noahbucher/Documents_local/Plant_reconstruction/ppheno/data/melonCycle/2024-08-05/A-1_2024-08-05/m_pc_A-1_2024-08-05_dense_02.ply")
-    output_path = "/Users/noahbucher/Documents_local/Plant_reconstruction/ppheno/data/melonCycle/2024-08-05/A-1_2024-08-05/DON_pc_A-1_2024-08-05_dense_02.ply"
+    pcd = o3d.io.read_point_cloud("/Users/noahbucher/Documents_local/Plant_reconstruction/ppheno/data/figures/pointcloud_time_series/C-3/rotated/processed_s_pc_C-3_2024-08-07_dense_02.ply")
+    output_path = "/Users/noahbucher/Documents_local/Plant_reconstruction/ppheno/data/figures/pointcloud_time_series/C-3/DoN/processed_s_pc_C-3_2024-08-07_dense_02_DoN.ply"
 
     # Downsample the point cloud for greatly improved performance
-    pcd = pcd.voxel_down_sample(voxel_size=0.05)
+    pcd = pcd.voxel_down_sample(voxel_size=0.0001)
 
     # Print number of points in the point cloud
     print(f"Number of points in the point cloud: {len(pcd.points)}")
+
+    # filter the point cloud
+    pcd = filter_z_axis(pcd, z_threshold=0.05)
+    # o3d.visualization.draw_geometries([pcd])
+
+    # calculate the average point distance
+    distances = pcd.compute_nearest_neighbor_distance()
+    avg_dist = np.mean(distances)
+    print(f"Average point distance: {avg_dist}")
+
+    radius_small = 2 * avg_dist
+
+    # radius_large = 10 * avg_dist
+    radius_large = 0.005
+
+    print(f"Small-scale radius: {radius_small}")
+    print(f"Large-scale radius: {radius_large}")
     
     # Define radii for small and large scale normals
     # radius_small = 0.05  # Adjust based on point cloud scale
     # radius_large = 0.25   # Adjust based on point cloud scale
 
-    radius_small = 0.4  # Adjust based on point cloud scale
-    radius_large = 2   # Adjust based on point cloud scale
+    # radius_small = 0.4  # Adjust based on point cloud scale
+    # radius_large = 2   # Adjust based on point cloud scale
 
     # # Compute normals at small scale and get statistics
     # normals_small, stats_small = compute_normals_and_stats(pcd, radius_small)
@@ -370,8 +424,12 @@ if __name__ == '__main__':
 
         # Compute the DoN magnitudes (feature vector)
     DoN_magnitudes = compute_DoN_feature_vector(pcd, radius_small, radius_large)
+
+    np.set_printoptions(threshold=500)  # You can adjust the threshold to show more elements
     
-    print("Computed DoN feature vector:", DoN_magnitudes)
+    print("Computed DoN magnitudes:", DoN_magnitudes)
+    print(f"DoN magnitudes range: min={DoN_magnitudes.min()}, max={DoN_magnitudes.max()}")
+
 
     # print(f"Computed DoN magnitudes for all points: {DoN_magnitudes}")
 

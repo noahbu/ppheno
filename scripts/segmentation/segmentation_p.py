@@ -375,7 +375,7 @@ def identify_plant_cluster(pcd, labels, n_clusters):
 
     return plant_cluster
 
-def preprocess_point_cloud(pcd, voxel_size=0.003, nb_neighbors=20, std_ratio=2.0):
+def preprocess_point_cloud(pcd, voxel_size=0.001, nb_neighbors=20, std_ratio=2.0):
     """Preprocess point cloud by downsampling and removing statistical outliers."""
     pcd = pcd.voxel_down_sample(voxel_size=voxel_size)
     cl, ind = pcd.remove_statistical_outlier(nb_neighbors=nb_neighbors, std_ratio=std_ratio)
@@ -519,7 +519,7 @@ def process_directory(directory, results_file):
 import open3d as o3d
 import numpy as np
 
-def segment_plant_and_ground(pcd):
+def segment_plant_and_ground(pcd, n_clusters_1=2, n_clusters_2=2):
     """
     Segment the point cloud into plant and ground.
     Returns the point cloud for the plant after the second clustering and the ground points.
@@ -536,8 +536,8 @@ def segment_plant_and_ground(pcd):
     print(f"Downsampled point cloud to {len(pc_dense_02.points)} points.")
 
     # Define parameters for first clustering
-    radius_small = 0.01
-    radius_large = 0.02
+    radius_small = 0.0001
+    radius_large = 0.0002
 
     # First GMM clustering
     weights_first = {
@@ -548,10 +548,10 @@ def segment_plant_and_ground(pcd):
         'intensity': 1.0,
         'don': 0.0
     }
-    labels_first = perform_gmm_clustering(pc_dense_02, radius_small, radius_large, weights_first, n_clusters=2)
+    labels_first = perform_gmm_clustering(pc_dense_02, radius_small, radius_large, weights_first, n_clusters=n_clusters_1)
 
     # Identify plant cluster based on first clustering
-    plant_cluster = identify_plant_cluster(pc_dense_02, labels_first, n_clusters=2)
+    plant_cluster = identify_plant_cluster(pc_dense_02, labels_first, n_clusters=n_clusters_1)
 
     # Filter plant points for second clustering
     plant_pcd = filter_cluster_points(pc_dense_02, labels_first, plant_cluster)
@@ -567,10 +567,10 @@ def segment_plant_and_ground(pcd):
         'intensity': 1.0,
         'don': 0.0
     }
-    labels_second = perform_gmm_clustering(plant_pcd, radius_small, radius_large, weights_second, n_clusters=2)
+    labels_second = perform_gmm_clustering(plant_pcd, radius_small, radius_large, weights_second, n_clusters=n_clusters_2)
 
     # Identify plant cluster from the second clustering
-    plant_cluster_second = identify_plant_cluster(plant_pcd, labels_second, n_clusters=2)
+    plant_cluster_second = identify_plant_cluster(plant_pcd, labels_second, n_clusters=n_clusters_2)
 
     # Filter plant points from second clustering
     plant_only_pcd = filter_cluster_points(plant_pcd, labels_second, plant_cluster_second)
@@ -586,6 +586,16 @@ def segment_plant_and_ground(pcd):
 
     return plant_only_pcd, ground_pcd
 
+def assign_colors_to_clusters(pcd, labels, cluster_colors):
+    colors = np.zeros((len(labels), 3))  # Initialize colors array
+    for i in range(len(labels)):
+        if labels[i] == -1:  # Noise points are labeled as -1
+            colors[i] = [0, 0, 0]  # Assign black to noise points
+        else:
+            colors[i] = cluster_colors[labels[i]]  # Assign random color to clusters
+    pcd.colors = o3d.utility.Vector3dVector(colors)
+    return pcd
+
 
 def main():
     # root_dir = "/Users/noahbucher/Documents_local/Plant_reconstruction/ppheno/data/melonCycle/2024-08-01"  # Set the root directory containing the folders
@@ -598,14 +608,55 @@ def main():
     #     process_directory(subdir, results_file)
 
     # load a pointcloud
-    pcd = load_pointcloud_relative("data/figures/pointcloud_time_series/C-3/s_pc_C-3_2024-08-04_dense_02.ply")
 
-    # Segment the point cloud into plant and ground
+    data_path = "/Users/noahbucher/Documents_local/Plant_reconstruction/ppheno/data/figures/pointcloud_time_series/C-3/manual/s_pc_C-3_2024-08-05_dense_02 - Cloud.ply"
+    pcd = load_pointcloud_relative(data_path)
+
+
+    # Assuming pcd is your input point cloud and segment_plant_and_ground() segments it
     plant_only, ground = segment_plant_and_ground(pcd)
 
-    # Visualize the segmented point cloud
-    o3d.visualization.draw_geometries([plant_only])
+    # Perform DBSCAN clustering on the plant point cloud
+    labels = np.array(plant_only.cluster_dbscan(eps=0.02, min_points=10, print_progress=True))
+    max_label = labels.max()
+    print(f"Point cloud has {max_label + 1} clusters")
+
+    # Identify the plant cluster based on hue values
+    plant_cluster = identify_plant_cluster(plant_only, labels, max_label + 1)
+    print(f"Detected plant cluster: {plant_cluster}")
+
+    # Filter the point cloud to get only the plant
+    plant_only_filtered = filter_cluster_points(plant_only, labels, plant_cluster)
+
+    plant_only_filtered = preprocess_point_cloud(plant_only_filtered)
+
+
+    # Visualize the filtered plant point cloud
+    o3d.visualization.draw_geometries([plant_only_filtered])
     o3d.visualization.draw_geometries([ground])
+
+    # safe the plant_only_filtered point cloud
+    save_pointcloud_relative(plant_only_filtered, "data/figures/pointcloud_time_series/C-3/segmented", "plant_s_pc_C-3_2024-08-08_dense_02.ply")
+    save_pointcloud_relative(ground, "data/figures/pointcloud_time_series/C-3/segmented", "ground_s_pc_C-3_2024-08-08_dense_02.ply")
+
+
+
+    # Assign random colors to clusters
+    # cluster_colors = {}
+    # for i in range(max_label + 1):
+    #     cluster_colors[i] = [np.random.rand(), np.random.rand(), np.random.rand()]
+
+    # # Color the point cloud based on clusters
+    # plant_only_colored = assign_colors_to_clusters(plant_only, labels, cluster_colors)
+
+    # Visualize the colored point cloud
+    # o3d.visualization.draw_geometries([plant_only_colored])
+
+
+
+    # Visualize the segmented point cloud
+    # o3d.visualization.draw_geometries([plant_only])
+    # o3d.visualization.draw_geometries([ground])
 
 
 if __name__ == "__main__":
