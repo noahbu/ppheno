@@ -13,6 +13,7 @@
 
 import numpy as np
 import open3d as o3d
+import os
 
 def read_point_cloud_pcd(file_path):
     """
@@ -219,14 +220,30 @@ def main(original_file, downsampled_file, output_file, threshold):
     # # Save the normalized point cloud
     # o3d.io.write_point_cloud(output_file_normalized, normalized_pcd)
 
-if __name__ == '__main__':
-    # TODO: Adapt the file paths here
-    original_file = "/Users/noahbucher/Documents_local/Plant_reconstruction/ppheno/data/leaf_area/blue_leaf/pc_blueLeaf_03_s.ply"
-    downsampled_file = "/Users/noahbucher/Documents_local/Plant_reconstruction/ppheno/data/leaf_area/blue_leaf/som_output/pc_blueLeaf_03_s_2048.ply"
-    output_file = "/Users/noahbucher/Documents_local/Plant_reconstruction/ppheno/data/leaf_area/blue_leaf/som_output/pc_blueLeaf_03_s_2048_cleaned.ply"
-    output_file_normals = "/Users/noahbucher/Documents_local/Plant_reconstruction/ppheno/data/leaf_area/blue_leaf/som_output/pc_blueLeaf_03_s_2048_cleaned_normals.ply"
-    output_file_normalized = "/Users/noahbucher/Documents_local/Plant_reconstruction/ppheno/data/leaf_area/blue_leaf/som_output/pc_blueLeaf_03_s_2048_normalized.ply"
-    threshold = 0.005  # Set distance threshold here
 
-    print(f"Starting process with threshold: {threshold}")
-    main(original_file, downsampled_file, output_file, threshold)
+if __name__ == '__main__':
+    # Provide the original and downsampled file paths
+    original_file = "/Users/noahbucher/Documents_local/Plant_reconstruction/ppheno/data/figures/semantic_segemntation/Downsampling/s_pc_C-3_2024-08-07_dense_02.ply"
+    downsampled_file = "/Users/noahbucher/Documents_local/Plant_reconstruction/ppheno/data/figures/semantic_segemntation/Downsampling/downsampled/512_processed_s_pc_C-3_2024-08-07_dense_02.ply"
+
+    # Extract the directory and base name (without extension) from the downsampled file
+    base_dir = os.path.dirname(downsampled_file)
+    base_filename = os.path.basename(downsampled_file).replace(".ply", "")  # Remove ".ply"
+
+    # Define output file names based on the downsampled file
+    output_file_cleaned = os.path.join(base_dir, f"{base_filename}_cleaned.ply")
+    output_file_normals = os.path.join(base_dir, f"{base_filename}_cleaned_normals.ply")
+    output_file_normalized = os.path.join(base_dir, f"{base_filename}_cleaned_normalized.ply")
+
+    # Set distance threshold
+    threshold = 0.008
+
+    print(f"Original file: {original_file}")
+    print(f"Downsampled file: {downsampled_file}")
+    print(f"Output (cleaned): {output_file_cleaned}")
+    print(f"Output (normals): {output_file_normals}")
+    print(f"Output (normalized): {output_file_normalized}")
+
+    # Call the main function with the provided paths
+    main(original_file, downsampled_file, output_file_cleaned, threshold)
+

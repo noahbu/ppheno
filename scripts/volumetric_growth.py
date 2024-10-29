@@ -26,7 +26,7 @@ def estimate_volume(pcd):
     # Voxelization
     voxel_grid = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd, voxel_size)
 
-    # o3d.visualization.draw_geometries([voxel_grid])
+    o3d.visualization.draw_geometries([voxel_grid])
     
     # Count the number of voxels
     num_voxels = len(voxel_grid.get_voxels())
@@ -220,32 +220,34 @@ def main():
     folder_path = "/Users/noahbucher/Documents_local/Plant_reconstruction/ppheno/data/melon_dataset/scaled/rotated"
     csv_file_path = "/Users/noahbucher/Documents_local/Plant_reconstruction/ppheno/data/figures/"
 
-    # file_path = "/Users/noahbucher/Documents_local/Plant_reconstruction/ppheno/data/figures/pointcloud_time_series/C-3/rotated/processed_s_pc_C-3_2024-08-07_dense_02.ply"
+    file_path = "/Users/noahbucher/Documents_local/Plant_reconstruction/ppheno/data/figures/pointcloud_time_series/C-3/rotated/processed_s_pc_C-3_2024-08-07_dense_02.ply"
 
-    # pcd = o3d.io.read_point_cloud(file_path)
-    # pcd = filter_z_axis(pcd, z_threshold=0.03)
+    pcd = o3d.io.read_point_cloud(file_path)
+    pcd = filter_z_axis(pcd, z_threshold=0.03)
 
-    # voxel_size = 0.001  # Example value, adjust as needed
-    # downsampled_pcd = pcd.voxel_down_sample(voxel_size)
 
-    # # o3d.visualization.draw_geometries([downsampled_pcd])
+    voxel_size = 0.005  # Example value, adjust as needed
+    pcd = pcd.voxel_down_sample(voxel_size)
 
-    # # Estimate the volume
-    # volume = estimate_volume(pcd)
-    # print(f"Volume: {volume:.6f} m^3")
+
+    # o3d.visualization.draw_geometries([downsampled_pcd])
+
+    # Estimate the volume
+    volume = estimate_volume(pcd)
+    print(f"Volume: {volume:.6f} m^3")
 
 
      # Process all point clouds in the folder and collect the volume estimates
-    df_volumes = process_pointclouds_in_folder(folder_path)
+    # df_volumes = process_pointclouds_in_folder(folder_path)
 
 
         # Save the DataFrame to a CSV file
-    csv_file_path = os.path.join(csv_file_path, 'volumes.csv')
-    try:
-        df_volumes.to_csv(csv_file_path, index=False, float_format='%.7f')
-        print(f"\nResults saved to {csv_file_path}")
-    except Exception as e:
-        print(f"Error saving CSV file: {e}")
+    # csv_file_path = os.path.join(csv_file_path, 'volumes.csv')
+    # try:
+    #     df_volumes.to_csv(csv_file_path, index=False, float_format='%.7f')
+    #     print(f"\nResults saved to {csv_file_path}")
+    # except Exception as e:
+    #     print(f"Error saving CSV file: {e}")
 
     # Path to save the CSV file
 

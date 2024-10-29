@@ -25,6 +25,8 @@ def visualize_xz_projections_grid(folder_path, output_file=None):
     fig = plt.figure(figsize=(12, 12), constrained_layout=True)
     gs = GridSpec(3, 3, figure=fig, height_ratios=[0.2, 0.4, 0.6])
     
+
+    
     all_x_vals = []
 
     for idx, file_name in enumerate(point_cloud_files[:9]):
@@ -36,7 +38,7 @@ def visualize_xz_projections_grid(folder_path, output_file=None):
         # pcd = pcd.select_by_index(ind)
 
         # # Downsample the point cloud
-        # pcd = pcd.voxel_down_sample(voxel_size=0.003)
+        pcd = pcd.voxel_down_sample(voxel_size=0.003)
 
         # Project to XZ plane
         projected_points, projected_colors = project_to_xz_plane(pcd)

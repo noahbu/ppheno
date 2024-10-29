@@ -357,6 +357,8 @@ def filter_z_axis(point_cloud, z_threshold=0.03):
 
 if __name__ == '__main__':
     # Load point cloud
+
+    file_path = "/Users/noahbucher/Documents_local/Plant_reconstruction/ppheno/data/figures/semantic_segemntation/Downsampling/s_pc_C-3_2024-08-07_dense_02.ply"
     pcd = o3d.io.read_point_cloud("/Users/noahbucher/Documents_local/Plant_reconstruction/ppheno/data/figures/pointcloud_time_series/C-3/rotated/processed_s_pc_C-3_2024-08-07_dense_02.ply")
     output_path = "/Users/noahbucher/Documents_local/Plant_reconstruction/ppheno/data/figures/pointcloud_time_series/C-3/DoN/processed_s_pc_C-3_2024-08-07_dense_02_DoN.ply"
 
