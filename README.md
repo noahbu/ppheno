@@ -74,7 +74,9 @@ Make sure you have the following installed:
 
 The dataset used for this project includes multi-angle images of musk melon plants captured in controlled environments. Point clouds are reconstructed using NeRFs.
 
-*Note: Data files may not be included in the repository due to size. Contact the maintainers for access.*
+The NeRF reconstruction requires preprocessing of the video which was done with COLMAP, which needs to be installed for processing.
+
+*Note: Data files are not included in the repository due to size. Contact me for access.*
 
 ## 🤝 Contributing
 
