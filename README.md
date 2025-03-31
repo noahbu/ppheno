@@ -27,24 +27,52 @@ Make sure you have the following installed:
 - pip (Python package manager)
 - Git
 
-### Installation
+## 🛠️ Installation
 
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/noahbu/ppheno.git
-   cd ppheno
-   ```
+This project uses Python and Jupyter notebooks. The primary dependencies can be managed using `pip`.
 
-2. **Install dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
+### 1. Clone the Repository
 
-3. (Optional) Create a virtual environment:
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
+```bash
+git clone https://github.com/noahbu/ppheno.git
+cd ppheno
+```
+
+### 2. Create and Activate a Virtual Environment (Optional but Recommended)
+
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+### 3. Install Python Dependencies
+
+There is no `requirements.txt` provided, but based on the Jupyter notebooks and scripts, you will likely need:
+
+```bash
+pip install numpy pandas matplotlib open3d jupyter
+```
+
+If you plan to work with NeRFs or the cleaning pipeline, you may also need:
+
+```bash
+pip install scikit-learn opencv-python
+```
+
+### 4. Run Jupyter Notebook
+
+Most of the analysis is driven from notebooks. To start:
+
+```bash
+jupyter notebook
+```
+
+Then open the relevant `.ipynb` files to run the point cloud analysis and visualization.
+
+---
+
+🧠 Tip: If you're missing packages when running a notebook, Jupyter will usually tell you in the error log. You can install them on the fly with `!pip install <package-name>` in a cell.
+
 
 ## ⚙️ Usage
 
